@@ -80,10 +80,8 @@ It runs in CI. Fix the formatting with `terraform -chdir=infra fmt -recursive`.
    | `TF_GITHUB_TOKEN` | The GitHub token (4) |
 
 6. **Look first.** Run `make ids` (Run locally, below). It lists every DNS record, a
-   redirect ruleset and Web Analytics if they exist. `imports.tf` finds the Proton
-   records by itself. Anything else that's listed either gets a resource and an import, or
-   is left alone on purpose. Expected: no redirect ruleset and no Web Analytics site yet
-   (Terraform creates them); if one exists, add an `import` block for it.
+   redirect ruleset and Web Analytics if they exist. On the first apply the existing
+   Proton records were adopted with `import` blocks (since removed, see Imports later).
 7. **First plan.** `make init && make plan` locally, then open a pull request and read the
    plan in its comment: imports, the new `www` record, the redirect rule, Web Analytics,
    the GitHub settings, and nothing destroyed. Possible noise on the mail records: quotes
@@ -119,6 +117,6 @@ make plan-file    # the same, into a temp file, with the summary on screen
 
 ## Imports later
 
-Something made by hand that should be managed: add its resource and an `import` block in
-`imports.tf` with its ID, and open a pull request. The plan shows `will be imported`. Once
-applied, the block can go.
+Something made by hand that should be managed: add its resource and an `import` block
+(e.g. in a new `imports.tf`) with its ID (`make ids` prints them), and open a pull
+request. The plan shows `will be imported`. Once applied, the block can go.

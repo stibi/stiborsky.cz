@@ -14,60 +14,51 @@ locals {
     tls_1_3          = "on"
   }
 
-  # Proton Mail. These records existed before Terraform and are imported (imports.tf);
-  # the values match what Proton's dashboard asks for. `match` is a part of the content
-  # that finds the existing record for the import, and nothing else. TXT contents are
-  # quoted, as Cloudflare recommends.
+  # Proton Mail. These records existed before Terraform and were imported on the first
+  # apply; the values match what Proton's dashboard asks for. TXT contents are quoted, as
+  # Cloudflare recommends.
   mail_records = {
     mx_primary = {
       type     = "MX"
       name     = local.zone_name
       content  = "mail.protonmail.ch"
       priority = 10
-      match    = "mail.protonmail.ch"
     }
     mx_secondary = {
       type     = "MX"
       name     = local.zone_name
       content  = "mailsec.protonmail.ch"
       priority = 20
-      match    = "mailsec.protonmail.ch"
     }
     spf = {
       type    = "TXT"
       name    = local.zone_name
       content = "\"v=spf1 include:_spf.protonmail.ch ~all\""
-      match   = "v=spf1"
     }
     proton_verification = {
       type    = "TXT"
       name    = local.zone_name
       content = "\"protonmail-verification=99029eb0639973968c948aecc9715ae67dba65a8\""
-      match   = "protonmail-verification="
     }
     dkim1 = {
       type    = "CNAME"
       name    = "protonmail._domainkey.${local.zone_name}"
       content = "protonmail.domainkey.dd4zr2tg7invoxelq6yhaiai657zn3hhszaoxjik7t6ko2lwse7ea.domains.proton.ch"
-      match   = "protonmail.domainkey."
     }
     dkim2 = {
       type    = "CNAME"
       name    = "protonmail2._domainkey.${local.zone_name}"
       content = "protonmail2.domainkey.dd4zr2tg7invoxelq6yhaiai657zn3hhszaoxjik7t6ko2lwse7ea.domains.proton.ch"
-      match   = "protonmail2.domainkey."
     }
     dkim3 = {
       type    = "CNAME"
       name    = "protonmail3._domainkey.${local.zone_name}"
       content = "protonmail3.domainkey.dd4zr2tg7invoxelq6yhaiai657zn3hhszaoxjik7t6ko2lwse7ea.domains.proton.ch"
-      match   = "protonmail3.domainkey."
     }
     dmarc = {
       type    = "TXT"
       name    = "_dmarc.${local.zone_name}"
       content = var.dmarc_rua == null ? "\"v=DMARC1; p=quarantine\"" : "\"v=DMARC1; p=quarantine; rua=${var.dmarc_rua}\""
-      match   = "v=DMARC1"
     }
   }
 }

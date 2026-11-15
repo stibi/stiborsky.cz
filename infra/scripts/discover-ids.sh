@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints what the zone holds today, so cloudflare.tf can match it before the first apply.
-# Read-only: GET requests only. imports.tf finds the IDs it needs by itself; this is for
-# checking that nothing else is there (other records, a redirect ruleset, Web Analytics).
+# Read-only: GET requests only. For checking what exists outside Terraform (records,
+# rulesets, Web Analytics) and for the IDs an `import` block needs.
 #
 # Reads CLOUDFLARE_API_TOKEN (the Terraform token) and CLOUDFLARE_ACCOUNT_ID from the
 # environment, e.g. from infra/.envrc via direnv (README.md, Run locally).
@@ -29,7 +29,7 @@ get "/zones/$zone_id/dns_records?per_page=100" |
   jq -r '.result[] | [.id, .type, .name, (.priority // "" | tostring), .content, (if .proxied then "proxied" else "dns only" end), "ttl=\(.ttl)"] | @tsv'
 
 echo
-echo "== Redirect ruleset (none expected: Terraform creates it; if there is one, add an import)"
+echo "== Redirect ruleset (managed by Terraform)"
 get "/zones/$zone_id/rulesets" |
   jq -c '.result[] | select(.phase == "http_request_dynamic_redirect" and .kind == "zone") | {id, name}'
 
@@ -43,6 +43,6 @@ get "/zones/$zone_id/settings" |
   jq -c '.result[] | select(.modified_on != null) | {id, value, modified_on}'
 
 echo
-echo "== Web Analytics sites in the account (if $zone_name is listed, add an import)"
+echo "== Web Analytics sites in the account (the $zone_name one is managed by Terraform)"
 get "/accounts/$CLOUDFLARE_ACCOUNT_ID/rum/site_info/list" |
   jq -c '.result[]? | {site_tag, host: (.ruleset.zone_name // .host), auto_install}'
