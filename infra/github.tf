@@ -1,4 +1,4 @@
-# The GitHub repository stibi/stiborsky.cz. Created by hand and imported (imports.tf).
+# The GitHub repository stibi/stiborsky.cz. Created by hand and imported on the first apply.
 # Actions secrets are not managed here: their values would land in the state. They are
 # listed in README.md.
 
