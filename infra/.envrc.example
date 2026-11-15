@@ -1,0 +1,22 @@
+# Credentials for running Terraform and scripts/discover-ids.sh locally, with direnv:
+#   cp infra/.envrc.example infra/.envrc && direnv allow
+# infra/.envrc is gitignored. Never commit values. Where each one comes from: README.md,
+# Bootstrap.
+
+# Cloudflare token for Terraform (Bootstrap step 3), not the website deploy token.
+export CLOUDFLARE_API_TOKEN=
+# Cloudflare account ID: dashboard → the zone's overview page, right column.
+export CLOUDFLARE_ACCOUNT_ID=
+# The same account ID, as the Terraform variable cloudflare_account_id.
+export TF_VAR_cloudflare_account_id="$CLOUDFLARE_ACCOUNT_ID"
+
+# R2 Access Key ID of the state token (Bootstrap step 2: R2 → Manage API tokens).
+export AWS_ACCESS_KEY_ID=
+# R2 Secret Access Key of the same token.
+export AWS_SECRET_ACCESS_KEY=
+# R2 endpoint of the account, for the s3 backend.
+export AWS_ENDPOINT_URL_S3="https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+
+# GitHub token for the github provider: the fine-grained PAT (Bootstrap step 4), or your
+# own gh login for plans.
+export GITHUB_TOKEN="$(gh auth token)"

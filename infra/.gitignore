@@ -1,0 +1,5 @@
+.terraform/
+.terraform-check/
+tfplan
+plan.txt
+plan-status.txt
