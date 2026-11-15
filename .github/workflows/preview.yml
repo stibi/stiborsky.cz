@@ -1,0 +1,101 @@
+name: Preview
+
+# Deploys a pull request's site to https://dev.stiborsky.cz, a separate Worker
+# (env "dev" in wrangler.jsonc), for review before merging. There is one dev site:
+# it shows whichever pull request was pushed last. Re-run this workflow on a pull
+# request to bring it back. The preview is marked noindex (scripts/mark-dev.sh).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - site/**
+      - wrangler.jsonc
+      - package.json
+      - pnpm-lock.yaml
+      - .htmlvalidate.json
+      - scripts/mark-dev.sh
+      - .github/workflows/preview.yml
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to deploy to dev.stiborsky.cz
+        required: true
+
+permissions:
+  contents: read
+
+# One preview deploy at a time; a waiting one is replaced by a newer push, so the most
+# recently pushed pull request ends up on dev.
+concurrency:
+  group: preview-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to dev.stiborsky.cz
+    # Forks and Dependabot get no Actions secrets, so they can't deploy.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    environment:
+      name: dev
+      url: https://dev.stiborsky.cz
+    steps:
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_PR: ${{ inputs.pr }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            sha=$(gh pr view "$INPUT_PR" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
+            number=$INPUT_PR
+          else
+            sha=${{ github.event.pull_request.head.sha }}
+            number=${{ github.event.pull_request.number }}
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+      # The pull request's own commit, not the merge with main: what you review is what
+      # the branch holds.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: scripts/mark-dev.sh "${{ steps.pr.outputs.number }}" "${{ steps.pr.outputs.short }}"
+      - name: Deploy
+        run: pnpm exec wrangler deploy --env dev
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Comment the preview link
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          SHORT_SHA: ${{ steps.pr.outputs.short }}
+        with:
+          script: |
+            const marker = '<!-- dev-preview -->';
+            const issue_number = Number(process.env.PR_NUMBER);
+            const { owner, repo } = context.repo;
+            const when = new Date().toISOString().replace('T', ' ').slice(0, 16);
+            const body = `${marker}\nPreview of ${process.env.SHORT_SHA} deployed to **https://dev.stiborsky.cz** (${when} UTC).\n\nThe dev site shows the most recently pushed pull request; re-run the Preview workflow to bring this one back.`;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find((c) => c.user.type === 'Bot' && c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

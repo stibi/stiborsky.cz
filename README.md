@@ -12,7 +12,8 @@ The Cloudflare zone and this GitHub repository are managed by Terraform in
 | `wrangler.jsonc` | Cloudflare config: assets only, no Worker code, custom domain `stiborsky.cz` |
 | `infra/` | Terraform: zone settings, DNS (incl. Proton Mail), `www` redirect, DNSSEC, Web Analytics, the GitHub repository |
 | `docs/obsah.md` | The site's content as text |
-| `.github/workflows/` | `ci.yml` checks, `website.yml` deploys, `infra.yml` plans and applies |
+| `.github/workflows/` | `ci.yml` checks, `website.yml` deploys, `preview.yml` deploys a pull request to dev, `infra.yml` plans and applies |
+| `scripts/mark-dev.sh` | Marks the dev preview: noindex and a preview badge (CI only) |
 
 ## Commands
 
@@ -60,3 +61,22 @@ Setup, once:
 5. **Check.** `curl -sI https://stiborsky.cz` gives `200` with the `content-security-policy`
    header; once Terraform has applied, `curl -sI 'https://www.stiborsky.cz/a?b=c'` gives
    `301` to `https://stiborsky.cz/a?b=c`.
+
+## Previews on dev.stiborsky.cz
+
+A pull request that changes the site is deployed to <https://dev.stiborsky.cz> by
+`.github/workflows/preview.yml`: the same check, then `wrangler deploy --env dev`, which
+creates or updates the separate Worker `stiborsky-cz-website-dev` and its custom domain.
+Production is never touched. The pull request gets a comment with the link.
+
+There is one dev site, and it shows the pull request pushed last. To bring another one
+back, re-run its Preview run, or Actions → Preview → Run workflow with its number.
+
+Before the deploy, `scripts/mark-dev.sh` changes the build in place: `robots.txt`
+disallows everything, every response carries `X-Robots-Tag: noindex, nofollow`, and each
+page shows a small "preview · PR #n · commit" badge.
+
+It needs no setup beyond the deploy token above: Workers Scripts: Edit covers the second
+Worker, and Workers Routes: Edit on the zone covers its custom domain. Pull requests from
+forks and Dependabot get no secrets, so they get no preview. The GitHub environment `dev`
+is created on the first run and only shows the link in the pull request.
