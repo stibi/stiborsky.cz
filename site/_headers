@@ -1,0 +1,13 @@
+# Response headers for every file the site serves (Cloudflare Workers static assets).
+# This file configures Cloudflare and is never served itself. HSTS comes from the zone
+# (infra/cloudflare.tf), not from here. The policy allows this origin only, plus the
+# Cloudflare Web Analytics beacon script and the endpoint it reports to. So: no inline
+# <script>, <style> or style="" attributes.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  X-Frame-Options: DENY

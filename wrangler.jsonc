@@ -1,0 +1,13 @@
+// Cloudflare Workers static assets: no Worker code, only the files in site/.
+// Deployed by .github/workflows/website.yml; setup: README.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "stiborsky-cz-website",
+  "compatibility_date": "2026-11-15",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [{ "pattern": "stiborsky.cz", "custom_domain": true }]
+}

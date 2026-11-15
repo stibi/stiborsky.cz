@@ -1,0 +1,5 @@
+# Build scripts are opt-in. workerd (wrangler's local runtime) and esbuild only run a
+# binary check after install; deploy and dev work without it.
+allowBuilds:
+  esbuild: false
+  workerd: false
