@@ -29,3 +29,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
 
+  infra:
+    name: Infra check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: echo "terraform=$(awk '$1 == "terraform" { print $2 }' .tool-versions)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ steps.version.outputs.terraform }}
+          terraform_wrapper: false
+      - run: infra/scripts/check.sh

@@ -1,0 +1,136 @@
+name: Infra
+
+# Terraform for the stiborsky.cz zone and this repository (infra/). Pull requests get a
+# plan as a comment; a push to main applies. Setup, secrets and token permissions:
+# infra/README.md.
+
+on:
+  pull_request:
+    paths:
+      - infra/**
+      - .tool-versions
+      - .github/workflows/infra.yml
+  push:
+    branches: [main]
+    paths:
+      - infra/**
+      - .tool-versions
+      - .github/workflows/infra.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Applies run one at a time and are never cancelled; a waiting one is replaced by a newer
+# push, which applies everything up to that commit anyway. A pull request's plan is
+# replaced by a newer push to it. Plans don't take the state lock, so they never hold up
+# an apply, and cancelling one leaves no lock behind.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('infra-plan-{0}', github.event.pull_request.number) || 'infra-apply' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+
+jobs:
+  plan:
+    name: Plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: echo "terraform=$(awk '$1 == "terraform" { print $2 }' ../.tool-versions)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ steps.version.outputs.terraform }}
+          terraform_wrapper: false
+      # fmt and validate, without credentials, so pull requests from forks get them too.
+      - run: scripts/check.sh
+      # Forks and Dependabot get no Actions secrets, so there is nothing to plan with.
+      - name: Plan
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.TF_CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          GITHUB_TOKEN: ${{ secrets.TF_GITHUB_TOKEN }}
+        run: |
+          terraform init
+          set +e
+          terraform plan -lock=false -no-color > plan.txt 2>&1
+          status=$?
+          set -e
+          cat plan.txt
+          echo "status=$status" > plan-status.txt
+          exit "$status"
+      - name: Comment the plan
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && hashFiles('infra/plan.txt') != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          # Masked in the log, but not in a comment: error messages can hold API URLs.
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- infra-plan -->';
+            const status = fs.existsSync('infra/plan-status.txt') ? fs.readFileSync('infra/plan-status.txt', 'utf8').trim() : '';
+            let plan = fs.readFileSync('infra/plan.txt', 'utf8');
+            const max = 60000;
+            if (process.env.ACCOUNT_ID) plan = plan.replaceAll(process.env.ACCOUNT_ID, '***');
+            if (plan.length > max) plan = '…(cut, the whole plan is in the run log)\n' + plan.slice(-max);
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const verdict = status === 'status=0' ? 'Terraform plan' : 'Terraform plan **failed**';
+            const body = `${marker}\n${verdict} for ${context.payload.pull_request.head.sha.slice(0, 7)} ([run](${run})):\n\n\`\`\`\n${plan}\n\`\`\``;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find((c) => c.user.type === 'Bot' && c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  apply:
+    name: Plan and apply
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Restricted to main by infra/github.tf, after the first apply. The secrets are
+    # repository secrets (pull requests plan too), so this is no wall around them; it is
+    # where required reviewers go to make every apply wait for an approval.
+    environment: infra
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.TF_CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      GITHUB_TOKEN: ${{ secrets.TF_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: echo "terraform=$(awk '$1 == "terraform" { print $2 }' ../.tool-versions)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ steps.version.outputs.terraform }}
+          terraform_wrapper: false
+      - run: scripts/check.sh
+      - run: terraform init
+      # Applies exactly the plan printed here, nothing planned later.
+      - run: terraform plan -no-color -out=tfplan
+      - run: terraform apply -no-color tfplan
