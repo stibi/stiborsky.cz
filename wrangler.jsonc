@@ -1,5 +1,6 @@
 // Cloudflare Workers static assets: no Worker code, only the files in site/.
-// Deployed by .github/workflows/website.yml; setup: README.md.
+// Production is deployed by .github/workflows/website.yml, the dev environment (a pull
+// request's preview) by .github/workflows/preview.yml; setup: README.md.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "stiborsky-cz-website",
@@ -9,5 +10,12 @@
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
   },
-  "routes": [{ "pattern": "stiborsky.cz", "custom_domain": true }]
+  "routes": [{ "pattern": "stiborsky.cz", "custom_domain": true }],
+  "env": {
+    // A separate Worker, so a preview can never touch production.
+    "dev": {
+      "name": "stiborsky-cz-website-dev",
+      "routes": [{ "pattern": "dev.stiborsky.cz", "custom_domain": true }]
+    }
+  }
 }

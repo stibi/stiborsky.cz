@@ -414,3 +414,18 @@ details[open] .card-title::after { content: "[–]"; color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Dev preview only: scripts/mark-dev.sh adds this badge on dev.stiborsky.cz. */
+.dev-badge {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1000;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  background: #b45309;
+  color: #fff;
+  font: 600 0.72rem/1.2 ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
