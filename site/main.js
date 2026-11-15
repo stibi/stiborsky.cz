@@ -1,71 +1,47 @@
-// Typewriter reveal of the hero line. Progressive enhancement:
-// the full text is already in the DOM, so it works without JS too.
+// Progressive enhancement only: the page is complete without this file.
+// With "prefers-reduced-motion: reduce" nothing here animates.
 (function () {
-  var el = document.querySelector('.eyebrow[data-typed]');
-  if (!el) return;
-  var text = el.getAttribute('data-typed');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) { el.classList.add('typed-done'); return; }
-  el.textContent = '';
-  el.classList.add('typing');
-  var i = 0;
-  function tick() {
-    el.textContent = text.slice(0, i);
-    if (i++ < text.length) {
-      setTimeout(tick, 40 + Math.random() * 45);
-    } else {
-      el.classList.remove('typing');
-      el.classList.add('typed-done');
-    }
-  }
-  setTimeout(tick, 400);
-})();
 
-// ASCII banner: show a buzzword as figlet art, then glitch-morph to a
-// random next one. Frames are pre-rendered (banner.js) — zero deps.
-(function () {
+  // Typewriter reveal of the terminal's output line. The full text is in the DOM already.
+  var el = document.querySelector('[data-typed]');
+  if (el && !reduce) {
+    var text = el.getAttribute('data-typed');
+    var i = 0;
+    el.textContent = '';
+    el.classList.add('typing');
+    (function tick() {
+      el.textContent = text.slice(0, i);
+      if (i++ < text.length) setTimeout(tick, 35 + Math.random() * 45);
+      else el.classList.remove('typing');
+    })();
+  }
+
+  // ASCII banner: a buzzword as figlet art, glitch-morphing to a random next one.
+  // Frames are pre-rendered in banner.js and all have the same size.
   var B = window.BANNER;
   var art = document.getElementById('banner-art');
   if (!B || !art) return;
-  var wordEl = document.querySelector('.banner-word');
-  var frames = B.frames.map(function (f) {
-    return { w: f.w, s: f.art.join('\n') };
-  });
-
-  // Scale font so the widest line fills the available width.
-  function fit() {
-    art.style.fontSize = '16px';
-    var natural = art.scrollWidth || 1;
-    var avail = art.clientWidth || art.parentElement.clientWidth;
-    var size = 16 * (avail - 1) / natural;
-    size = Math.max(7, Math.min(size, 30));
-    art.style.fontSize = size.toFixed(2) + 'px';
-  }
-
-  var GLYPHS = '█▓▒░#%*+=~<>/\\|'.split('');
-  function esc(c) { return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c; }
-  function rnd(a) { return a[(Math.random() * a.length) | 0]; }
-
+  var frames = B.frames.map(function (f) { return f.art.join('\n'); });
+  var GLYPHS = '█▓▒░#%*+=~<>/\\|';
   var cur = 0;
-  art.textContent = frames[0].s;
-  if (wordEl) wordEl.textContent = frames[0].w;
-  fit();
-  window.addEventListener('resize', fit);
+  art.textContent = frames[0];
+  if (reduce) return;
+
+  function esc(c) { return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c; }
 
   function morph(from, to, done) {
-    var n = from.length, thr = new Float32Array(n);
-    for (var i = 0; i < n; i++) thr[i] = Math.random() * 0.55;
-    var dur = 650, t0 = null;
+    var n = from.length, thr = [], t0 = null;
+    for (var k = 0; k < n; k++) thr.push(Math.random() * 0.55);
     function frame(ts) {
       if (t0 === null) t0 = ts;
-      var p = (ts - t0) / dur;
+      var p = (ts - t0) / 650;
       if (p >= 1) { art.textContent = to; return done(); }
       var html = '';
-      for (var i = 0; i < n; i++) {
-        var fc = from[i], tc = to[i];
-        if (fc === tc) { html += esc(tc); }
-        else if (p >= thr[i]) { html += esc(tc); }
-        else { html += '<span class="g">' + esc(rnd(GLYPHS)) + '</span>'; }
+      for (var j = 0; j < n; j++) {
+        var tc = to[j];
+        if (from[j] === tc || p >= thr[j]) html += esc(tc);
+        else html += '<span class="g">' + esc(GLYPHS[(Math.random() * GLYPHS.length) | 0]) + '</span>';
       }
       art.innerHTML = html;
       requestAnimationFrame(frame);
@@ -76,11 +52,10 @@
   function next() {
     var ni;
     do { ni = (Math.random() * frames.length) | 0; } while (ni === cur && frames.length > 1);
-    if (wordEl) wordEl.textContent = frames[ni].w;
-    morph(frames[cur].s, frames[ni].s, function () {
+    morph(frames[cur], frames[ni], function () {
       cur = ni;
-      setTimeout(next, 2600);
+      setTimeout(next, 2800);
     });
   }
-  setTimeout(next, 2400);
+  setTimeout(next, 2600);
 })();
