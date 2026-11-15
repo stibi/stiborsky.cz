@@ -631,6 +631,110 @@ details[open] .icon { background: var(--surface); }
   white-space: nowrap;
 }
 
+/* ---------- About ---------- */
+
+.about-grid {
+  display: grid;
+  gap: 1.75rem clamp(2rem, 5vw, 3.5rem);
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .about-grid { grid-template-columns: 12rem minmax(0, 1fr); }
+}
+
+.portrait { margin: 0; }
+
+.portrait img {
+  display: block;
+  width: 9rem;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+@media (min-width: 48rem) {
+  .portrait img { width: 100%; }
+}
+
+.about-copy p {
+  max-width: var(--measure);
+  font-size: 1.05rem;
+}
+
+.about-copy p + p { margin-top: 1rem; }
+
+.profile-links {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.profile-links a {
+  display: inline-block;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 0.85rem/1.2 var(--font-mono);
+  text-decoration: none;
+}
+
+.profile-links a:hover { border-color: var(--accent); color: var(--accent); }
+
+.about-more {
+  display: grid;
+  gap: 2.5rem clamp(2rem, 5vw, 3.5rem);
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+}
+
+@media (min-width: 60rem) {
+  .about-more { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
+.about-h3 {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  font: 600 0.95rem/1.3 var(--font-mono);
+  color: var(--accent);
+}
+
+.talks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.talks li {
+  display: flex;
+  gap: 1rem;
+  padding-block: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.talk-year {
+  flex: none;
+  width: 3rem;
+  padding-top: 0.1rem;
+  font: 500 0.85rem/1.5 var(--font-mono);
+  color: var(--muted);
+}
+
+.talk-body { display: grid; gap: 0.2rem; }
+
+.talk-title { font-weight: 600; line-height: 1.4; }
+
+a.talk-title { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 0.2em; }
+a.talk-title:hover { color: var(--accent); }
+
+.talk-event { font-size: 0.92rem; color: var(--muted); }
+
 /* ---------- Contact ---------- */
 
 .contact-section { padding-top: 0; }
