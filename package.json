@@ -11,8 +11,8 @@
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "html-validate": "11.21.0",
+    "html-validate": "11.21.1",
     "linkinator": "8.1.0",
-    "wrangler": "4.160.1"
+    "wrangler": "4.165.0"
   }
 }
